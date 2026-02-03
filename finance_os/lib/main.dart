@@ -1,74 +1,72 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'core/di/injection.dart';
+import 'core/router/app_router.dart';
+import 'core/theme/app_theme.dart';
+import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/presentation/bloc/auth_event.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set preferred orientations
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // Initialize Hive for local storage
   await Hive.initFlutter();
+
+  // Initialize dependency injection
   await configureDependencies();
-  runApp(const MyApp());
+
+  runApp(const FinanceOSApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class FinanceOSApp extends StatelessWidget {
+  const FinanceOSApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Finance OS',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Finance OS Home Page'),
+    return BlocProvider(
+      create: (_) => getIt<AuthBloc>()..add(const AuthCheckRequested()),
+      child: const _AppView(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
+class _AppView extends StatefulWidget {
+  const _AppView();
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<_AppView> createState() => _AppViewState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _AppViewState extends State<_AppView> {
+  late final AppRouter _appRouter;
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _appRouter = AppRouter(context.read<AuthBloc>());
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+    return MaterialApp.router(
+      title: 'Finance OS',
+      debugShowCheckedModeBanner: false,
+
+      // Theme configuration
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
+
+      // Router configuration
+      routerConfig: _appRouter.router,
     );
   }
 }
